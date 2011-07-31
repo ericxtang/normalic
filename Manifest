@@ -1,0 +1,6 @@
+README.rdoc
+Rakefile
+lib/constants.rb
+lib/normalic.rb
+spec/normalic_spec.rb
+Manifest

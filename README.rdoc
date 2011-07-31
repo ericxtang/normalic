@@ -1,0 +1,10 @@
+= normalic
+
+Easy U.S address parser
+
+It tries to correct mal-formed address to the best of its ability
+
+
+== Example
+
+address = Normalic::Address.parse("201 Varick St. floor 12th, New York, NY 10014")
