@@ -1,9 +1,14 @@
-= normalic
+= Normalic
 
 Easy U.S address parser
 
-It tries to correct mal-formed address to the best of its ability
+== More info
 
+Don't you wanna punch yourself in the face every time you have to normalize U.S mailing addresses?
+
+I did repeatedly while writing this gem so you don't have to anymore.
+
+It tries to correct mal-formed address to the best of its ability.
 
 == Example
 

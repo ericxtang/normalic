@@ -4,15 +4,12 @@ require 'ruby-debug'
 
 module Normalic
   module Address
+    #Iteratively take chunks off of the string.
     def self.parse(address)
       regex = {
-        #:unit => /\W+(?:(?:su?i?te|p\W*[om]\W*b(?:ox)?|dept|department|ro*m|fl|floor|apt|apartment|unit|box)\W+|\#\W*)[\w-]+/i,
         :unit => /(((\#?\w*)?\W*(su?i?te|p\W*[om]\W*b(?:ox)?|dept|department|ro*m|floor|fl|apt|apartment|unit|box))$)|(\W((su?i?te|p\W*[om]\W*b(?:ox)?|dept|department|ro*m|floor|fl|apt|apartment|unit|box)\W*(\#?\w*)?)\W{0,3}$)/i,
-        #:unit => /\W+(?:floor\W+|\#\W*)[\w-]+,?/i,
         :direct => Regexp.new(Directional.keys * '|' + '|' + Directional.values * '\.?|',Regexp::IGNORECASE),
-        #:direct => /west/i,
         :type => Regexp.new('(' + StreetTypes_list * '|' + ')\\W*?$',Regexp::IGNORECASE),
-        #:type => /street\W$/i,
         :number => /\d+-?\d*/,
         :fraction => /\d+\/\d+/,
         :country => /\W+USA$/,
@@ -41,9 +38,9 @@ module Normalic
       end
 
       address.gsub!(regex[:city], "")
-      #address.gsub!(Regexp.new('\W(' + regex[:unit].source + ')\\W{0,3}$', Regexp::IGNORECASE), "")
       address.gsub!(regex[:unit], "")
       address.gsub!(Regexp.new('\W(' + regex[:direct].source + ')\\W{0,3}$', Regexp::IGNORECASE), "")
+
       type = address[regex[:type]] and address.gsub!(regex[:type], "")
       type.gsub!(/(^\W*|\W*$)/, "").downcase! if type
       type = StreetTypes[type] || type if type
@@ -53,7 +50,6 @@ module Normalic
         address.gsub!(/(\Wand\W|\W\&\W)/, " and ")
         arr = ["", address, "", ""]
       else
-        #regex[:address] = Regexp.new('^\W*(' + regex[:number].source + '\\W)?\W*(?:' + regex[:fraction].source + '\W*)?' + regex[:street].source + '\W*?(?:' + regex[:unit].source + '\W+)?(?:,)', Regexp::IGNORECASE)
         regex[:address] = Regexp.new('^\W*(' + regex[:number].source + '\\W)?\W*(?:' + regex[:fraction].source + '\W*)?' + regex[:street].source, Regexp::IGNORECASE)
         arr = regex[:address].match(address).to_a
       end
@@ -76,8 +72,6 @@ module Normalic
         :state => state,
         :zipcode => zipcode
       }
-      #addr = [number, dir, street, type].delete_if {|x| !x || x.empty?}
-      #[addr.join(" "), city, state, zipcode].delete_if {|x| !x || x.empty?}.join(", ")
     end
   end
 end
