@@ -33,4 +33,26 @@ describe "Normalic test" do
     addr[:zipcode].should == "10014"
   end
 
+  it "should parse an address with floor info and without city info" do
+    addr = Normalic::Address.parse("201 Varick St. floor 12th")
+    addr[:number].should == "201"
+    addr[:street].should == "varick"
+    addr[:type].should == "st"
+  end
+
+  it "should parse an address with no city info" do
+    addr = Normalic::Address.parse("871 Washington Street")
+    addr[:number].should == "871"
+    addr[:street].should == "washington"
+    addr[:type].should == "st"
+  end
+
+
+  it "should parse an address with direction info and no city info" do
+    addr = Normalic::Address.parse("871 West Washington Street")
+    addr[:number].should == "871"
+    addr[:street].should == "washington"
+    addr[:direction].should == "w"
+    addr[:type].should == "st"
+  end
 end
