@@ -5,6 +5,7 @@ module Normalic
   class Address
 
     attr_accessor :number, :direction, :street, :type, :city, :state, :zipcode
+
     def initialize(fields={})
       @number = fields[:number]
       @direction = fields[:direction]
@@ -13,6 +14,14 @@ module Normalic
       @city = fields[:city]
       @state = fields[:state]
       @zipcode = fields[:zipcode]
+    end
+
+    def self.titlize(str)
+      if str
+        str.gsub(/\w+/){|w| w.capitalize}
+      else
+        nil
+      end
     end
 
     def [](field_name)
@@ -32,11 +41,14 @@ module Normalic
     end
 
     def to_s
-      "#{line1}, #{city.gsub(/\w+/){|w| w.capitalize}}, #{state.upcase} #{zipcode}"
+      #"#{line1},#{" #{city.gsub(/\w+/){|w| w.capitalize}}," if city}#{" #{state.upcase}" if state}#{" " + zipcode if zipcode}".strip
+      "#{line1}#{", #{city}" if city}#{", #{state}" if state}#{" " + zipcode if zipcode}".strip
+      #"#{line1}, #{city}, #{state} #{zipcode}"
     end
 
     def line1
-      "#{number}#{" "+direction.upcase if direction} #{street.gsub(/\w+/){|w| w.capitalize}} #{type.capitalize}"
+      #"#{number}#{" " + direction.upcase if direction}#{" " + street.gsub(/\w+/){|w| w.capitalize} if street}#{" " + type.capitalize if type}".strip
+      "#{number}#{" " + direction if direction}#{" " + street if street}#{" " + type if type}"
     end
 
     #Iteratively take chunks off of the string.
@@ -102,11 +114,11 @@ module Normalic
       self.new(
         {
           :number => number,
-          :direction => dir,
-          :street => street,
-          :type => type,
-          :city => city,
-          :state => state,
+          :direction => dir.upcase,
+          :street => titlize(street),
+          :type => titlize(type),
+          :city => titlize(city),
+          :state => state.upcase,
           :zipcode => zipcode
         }
       )
