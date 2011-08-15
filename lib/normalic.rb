@@ -1,9 +1,44 @@
 #only handles U.S addresses
 require 'constants'
-require 'ruby-debug'
 
 module Normalic
-  module Address
+  class Address
+
+    attr_accessor :number, :direction, :street, :type, :city, :state, :zipcode
+    def initialize(fields={})
+      @number = fields[:number]
+      @direction = fields[:direction]
+      @street = fields[:street]
+      @type = fields[:type]
+      @city = fields[:city]
+      @state = fields[:state]
+      @zipcode = fields[:zipcode]
+    end
+
+    def [](field_name)
+      begin
+        self.send(field_name.to_s)
+      rescue NoMethodError => e
+        nil
+      end
+    end
+
+    def []=(field_name, value)
+      begin
+        self.send("#{field_name}=", value)
+      rescue NoMethodError => e
+        nil
+      end
+    end
+
+    def to_s
+      "#{line1}, #{city.gsub(/\w+/){|w| w.capitalize}}, #{state.upcase} #{zipcode}"
+    end
+
+    def line1
+      "#{number}#{" "+direction.upcase if direction} #{street.gsub(/\w+/){|w| w.capitalize}} #{type.capitalize}"
+    end
+
     #Iteratively take chunks off of the string.
     def self.parse(address)
       address.strip!
@@ -64,15 +99,17 @@ module Normalic
       end
       street = arr[4].strip.downcase if arr[4] && !street
 
-      {
-        :number => number,
-        :direction => dir,
-        :street => street,
-        :type => type,
-        :city => city,
-        :state => state,
-        :zipcode => zipcode
-      }
+      self.new(
+        {
+          :number => number,
+          :direction => dir,
+          :street => street,
+          :type => type,
+          :city => city,
+          :state => state,
+          :zipcode => zipcode
+        }
+      )
     end
   end
 end

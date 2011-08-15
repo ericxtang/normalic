@@ -1,6 +1,6 @@
 
 module Normalic
-  module Address
+  class Address
 
   Directional = {
     "north"	=> "n",
