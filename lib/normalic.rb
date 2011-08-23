@@ -114,7 +114,7 @@ module Normalic
       self.new(
         {
           :number => number,
-          :direction => dir.upcase,
+          :direction => dir ? dir.upcase : nil,
           :street => titlize(street),
           :type => titlize(type),
           :city => titlize(city),
