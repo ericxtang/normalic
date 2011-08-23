@@ -67,13 +67,16 @@ module Normalic
       regex[:street] = Regexp.new('((' + regex[:direct].source + ')\\W)?\\W*(.*)\\W*(' + regex[:type].source + ')?', Regexp::IGNORECASE)
 
       #get rid of USA at the end
-      country_code = address[regex[:country]] and address.gsub!(regex[:country], "")
-      zipcode = address[regex[:zipcode]] and address.gsub!(regex[:zipcode], "")
+      country_code = address[regex[:country]]
+      address.gsub!(regex[:country], "")
+      zipcode = address[regex[:zipcode]]
+      address.gsub!(regex[:zipcode], "")
       zipcode.gsub!(/\W/, "") if zipcode
 
-      state = address[regex[:state]] and address.gsub!(regex[:state], "")
+      state = address[regex[:state]]
+      address.gsub!(regex[:state], "")
       state.gsub!(/(^\W*|\W*$)/, "").downcase! if state
-      state = StateCodes[state] || state and state.downcase!
+      state = StateCodes[state] || state
 
       if ZipCityMap[zipcode]
         regex[:city] = Regexp.new("\\W+" + ZipCityMap[zipcode] + "$", Regexp::IGNORECASE)
@@ -89,7 +92,8 @@ module Normalic
       address.gsub!(regex[:unit], "")
       address.gsub!(Regexp.new('\W(' + regex[:direct].source + ')\\W{0,3}$', Regexp::IGNORECASE), "")
 
-      type = address[regex[:type]] and address.gsub!(regex[:type], "")
+      type = address[regex[:type]]
+      address.gsub!(regex[:type], "")
       type.gsub!(/(^\W*|\W*$)/, "").downcase! if type
       type = StreetTypes[type] || type if type
 
@@ -114,11 +118,11 @@ module Normalic
       self.new(
         {
           :number => number,
-          :direction => dir.upcase,
+          :direction => dir ? dir.upcase : nil,
           :street => titlize(street),
           :type => titlize(type),
           :city => titlize(city),
-          :state => state.upcase,
+          :state => state ? state.upcase : nil,
           :zipcode => zipcode
         }
       )
