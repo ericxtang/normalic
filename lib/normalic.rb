@@ -1,7 +1,53 @@
-#only handles U.S addresses
 require 'constants'
 
 module Normalic
+  # only handles U.S. phone numbers
+  class PhoneNumber
+    attr_accessor :npa, :nxx, :slid, :ext
+
+    def initialize(fields={})
+      @npa = fields[:npa]
+      @nxx = fields[:nxx]
+      @slid = fields[:slid]
+      @ext = fields[:ext]
+    end
+
+    def self.parse(raw)
+      digs = raw.to_s.gsub(/[^\d]/,'')
+      while digs != (trim = digs.gsub(/^[01]/,''))
+        digs = trim
+      end
+      if digs.length < 10
+        raise(ParseError, 'Invalid phone number: less than 10 digits')
+      end
+      self.new(:npa => digs[0,3],
+               :nxx => digs[3,3],
+               :slid => digs[6,4],
+               :ext => digs.length > 10 ? digs[10..-1] : nil)
+    end
+
+    def to_s
+      "#{npa} #{nxx} #{slid}" + (ext ? " #{ext}" : '')
+    end
+
+    def [](field_name)
+      begin
+        self.send(field_name.to_s)
+      rescue NoMethodError => e
+        nil
+      end
+    end
+
+    def []=(field_name, value)
+      begin
+        self.send("#{field_name}=", value)
+      rescue NoMethodError => e
+        nil
+      end
+    end
+  end
+
+  # only handles U.S. addresses
   class Address
 
     attr_accessor :number, :direction, :street, :type, :city, :state, :zipcode
@@ -128,4 +174,6 @@ module Normalic
       )
     end
   end
+
+  class ParseError < StandardError; end
 end
