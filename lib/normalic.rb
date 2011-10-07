@@ -1,3 +1,6 @@
+require 'rubygems'
+require 'ruby-debug'
+
 require 'constants'
 
 module Normalic
@@ -45,6 +48,10 @@ module Normalic
         nil
       end
     end
+  end
+
+  class AddressR
+
   end
 
   # only handles U.S. addresses
@@ -115,6 +122,7 @@ module Normalic
       #get rid of USA at the end
       country_code = address[regex[:country]]
       address.gsub!(regex[:country], "")
+
       zipcode = address[regex[:zipcode]]
       address.gsub!(regex[:zipcode], "")
       zipcode.gsub!(/\W/, "") if zipcode
@@ -143,6 +151,7 @@ module Normalic
       type.gsub!(/(^\W*|\W*$)/, "").downcase! if type
       type = StreetTypes[type] || type if type
 
+      # arr: [ , , , ]
       if address =~ /(\Wand\W|\W\&\W)/
         #intersections.  print as is
         address.gsub!(/(\Wand\W|\W\&\W)/, " and ")
