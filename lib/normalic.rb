@@ -58,8 +58,13 @@ module Normalic
                :state => Regexp.new(StateCodes.values * '|' + '|' +
                                     StateCodes.keys * '|'),
                :city => /\w+(\s\w+)*/,
-               :unit => Regexp.new('((#?\w+\W+)?(' + UNIT_TYPE_REGEX.source + '))|' +
-                                   '((' + UNIT_TYPE_REGEX.source + ')(\W+#?\w+)?)')}
+               :unit => Regexp.new('(#?\w+\W+(' + UNIT_TYPE_REGEX.source + '))|' +
+                                   '((' + UNIT_TYPE_REGEX.source + ')\W+#?\w+)'),
+               :directional => Regexp.new(Directional.keys * '|' + '|' + Directional.values * '|'),
+               :type => Regexp.new(StreetTypesList * '|'),
+               :number => /\d+/,
+               :street => /[a-z]\w*(\s\w+)*/,
+               :intersection => /(.+)\W+(and|&)\W+(.+)/}
 
     attr_accessor :number, :direction, :street, :type, :city, :state, :zipcode
 
@@ -71,11 +76,20 @@ module Normalic
       @city = fields[:city]
       @state = fields[:state]
       @zipcode = fields[:zipcode]
+      @intersection = fields[:intersection] || false
     end
 
     def self.titlize(str)
       if str
         str.gsub(/\w+/){|w| w.capitalize}
+      else
+        nil
+      end
+    end
+
+    def self.titlize!(str)
+      if str
+        str.gsub!(/\w+/){|w| w.capitalize}
       else
         nil
       end
@@ -108,29 +122,170 @@ module Normalic
       "#{number}#{" " + direction if direction}#{" " + street if street}#{" " + type if type}"
     end
 
-    def self.parseR(str)
-      address = String.new(str)
+    # nondestructive
+    def self.parseR(address)
+      address = self.clean(address)
+      tokens = self.tokenize(address)
+      normd = self.normalize(tokens)
+      self.new(normd)
+    end
+
+    # destructive
+    def self.clean(address)
+      address = address.clone
+
       address.downcase!
       address.gsub!("\n",', ')
       address.strip!
       address.gsub!(/\s+/,' ')
       address.gsub!('.', '')
 
+      address
+    end
+
+    # destructive
+    def self.tokenize(address)
+      address = address.clone
+
       address.detoken!(REGEXES[:country])
-
       zipcode = address.detoken!(REGEXES[:zipcode])
-
       state = address.detoken!(REGEXES[:state])
-      state = StateCodes[state] || state
 
-      city = address.detoken!(REGEXES[:city])
+      _, number, address = address.splitr(Regexp.new('\W+(' + REGEXES[:number] + ')\W+'), 1)
+      directional = address.detoken_front!(REGEXES[:directional])
+      # what about when type conflicts in both streetname and city?
+      if street, t, city = address.splitr(Regexp.new('\W+(' + REGEXES[:type] + ')\W+'), 1)
+        type = t
+
+        city.cut!(/^\W+/)
+        directional = city.detoken_front!(REGEXES[:directional])
+        city.detoken_front!(REGEXES[:unit])
+
+        street.cut!(/\W+$/)
+        directional ||= street.detoken_front!(REGEXES[:directional])
+      elsif street, _, city = address.splitr(Regexp.new('\W+(' + REGEXES[:unit] + ')\W+'), 1)
+        type = nil
+
+        city.cut!(/^\W+/)
+
+        street.cut!(/\W+$/)
+        directional = street.detoken!(REGEXES[:directional])
+        directional ||= street.detoken_front!(REGEXES[:directional])
+      elsif # use comma
+
+      else
+        city = nil
+      end
+
+
+
+
+
+
+      address.detoken!(REGEXES[:unit])
+
+      locale_tokens = {:zipcode => zipcode,
+                       :state => state,
+                       :city => city}
+
+#      if m = address.match(REGEXES[:intersection])
+#        intersection = true
+#        t1, s1, d1 = self.tokenize_street(m[1], false)
+#        t2, s2, d2 = self.tokenize_street(m[3], false)
+#        type = [t1, t2]
+#        street = [s1, s2]
+#        directional = [d1, d2]
+#        number = nil
+#      else
+#        intersection = false
+#        type, street, directional, number = self.tokenize_street(address)
+#      end
+      {:zipcode => zipcode,
+       :state => state,
+       :city => city,
+       :type => type,
+       :street => street,
+       :directional => directional,
+       :number => number,
+       :intersection => intersection}
+    end
+
+    # destructive
+    def self.tokenize_street(address, has_number=true)
+      address = address.clone
+
+      directional = address.detoken!(REGEXES[:directional]) ||
+                    address.cut!(Regexp.new('(\A|\W+)(' +
+                                            REGEXES[:directional].source +
+                                            ')\W+'), 2)
+      type = address.detoken!(REGEXES[:type])
+      street = address.detoken!(REGEXES[:street])
+      if has_number
+        number = address.detoken!(REGEXES[:number])
+        return type, street, directional, number
+      else
+        return type, street, directional
+      end
+    end
+
+    # destructive
+    def self.normalize(tokens)
+      tokens = tokens.clone
+
+      tokens[:zipcode] = self.normalize_zipcode(tokens[:zipcode])
+      tokens[:state] = self.normalize_state(tokens[:state])
+      tokens[:city] = self.normalize_city(tokens[:city], tokens[:zipcode])
+
+      if tokens[:intersection]
+        tokens[:type].collect! {|t| self.normalize_type(t)}
+        tokens[:street].collect! {|s| self.normalize_street(s)}
+        tokens[:directional].collect! {|d| self.normalize_directional(d)}
+      else
+        tokens[:type] = self.normalize_type(tokens[:type])
+        tokens[:street] = self.normalize_street(tokens[:street])
+        tokens[:directional] = self.normalize_directional(tokens[:directional])
+      end
+      tokens
+    end
+
+    def self.normalize_zipcode(zipcode)
+      zipcode ? zipcode[0,5] : nil
+    end
+
+    def self.normalize_state(state)
+      if state
+        state = StateCodes[state] || state
+        state.upcase
+      else
+        nil
+      end
+    end
+
+    def self.normalize_city(city, zipcode=nil)
       city = ZipCityMap[zipcode] if zipcode && ZipCityMap[zipcode]
+      city ? self.titlize(city) : nil
+    end
 
-      unit = address.detoken!(REGEXES[:unit])
+    def self.normalize_type(type)
+      if type
+        type = StreetTypes[type] || type
+        self.titlize(type) + '.'
+      else
+        nil
+      end
+    end
 
-      self.new(:city => city,
-               :state => state,
-               :zipcode => zipcode)
+    def self.normalize_street(street)
+      street ? self.titlize(street) : nil
+    end
+
+    def self.normalize_directional(directional)
+      if directional
+        directional = Directional[directional] || directional
+        directional.upcase
+      else
+        nil
+      end
     end
 
     #Iteratively take chunks off of the string.
@@ -219,9 +374,25 @@ module Normalic
 
   String.class_eval do
     def detoken!(regex)
-      regex_p = Regexp.new('\W+(' + regex.source + ')$', regex.source)
+      regex_p = Regexp.new('(\A|\W+)(' + regex.source + ')$', regex.options)
+      token_p = self.cut!(regex_p)
+      token_p ? token_p.cut!(regex_p, 2) : nil
+    end
+
+    def detoken_front!(regex)
+      regex_p = Regexp.new('^(' + regex.source + ')(\Z|\W+)', regex.options)
       token_p = self.cut!(regex_p)
       token_p ? token_p.cut!(regex_p, 1) : nil
+    end
+
+    def splitr(regex, match_index=0)
+      if match = self.match(regex)
+        i1, i2 = match.offset(match_index)
+        j1, j2 = match.offset(0)
+        return self[0...j1], self[i1...i2], self[j2...self.length]
+      else
+        self, nil, nil
+      end
     end
 
     def cut!(regex, match_index=0)

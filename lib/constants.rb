@@ -467,6 +467,7 @@ module Normalic
   }
 
   StreetTypes_list = StreetTypes.to_a.flatten.uniq
+  StreetTypesList = StreetTypes.keys + StreetTypes.values.uniq
 
   ZipCityMap = {
     "22721" => "graves mill",
