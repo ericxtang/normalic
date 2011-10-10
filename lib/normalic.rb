@@ -50,12 +50,16 @@ module Normalic
     end
   end
 
-  class AddressR
-
-  end
-
   # only handles U.S. addresses
   class Address
+    UNIT_TYPE_REGEX = /ap(artmen)?t|box|building|bldg|dep(artmen)?t|fl(oor)?|po( box)?|r(oo)?m|s(ui)?te|un(i)?t/
+    REGEXES = {:country => /usa/,
+               :zipcode => /\d{5}(-\d{4})?/,
+               :state => Regexp.new(StateCodes.values * '|' + '|' +
+                                    StateCodes.keys * '|'),
+               :city => /\w+(\s\w+)*/,
+               :unit => Regexp.new('((#?\w+\W+)?(' + UNIT_TYPE_REGEX.source + '))|' +
+                                   '((' + UNIT_TYPE_REGEX.source + ')(\W+#?\w+)?)')}
 
     attr_accessor :number, :direction, :street, :type, :city, :state, :zipcode
 
@@ -102,6 +106,31 @@ module Normalic
     def line1
       #"#{number}#{" " + direction.upcase if direction}#{" " + street.gsub(/\w+/){|w| w.capitalize} if street}#{" " + type.capitalize if type}".strip
       "#{number}#{" " + direction if direction}#{" " + street if street}#{" " + type if type}"
+    end
+
+    def self.parseR(str)
+      address = String.new(str)
+      address.downcase!
+      address.gsub!("\n",', ')
+      address.strip!
+      address.gsub!(/\s+/,' ')
+      address.gsub!('.', '')
+
+      address.detoken!(REGEXES[:country])
+
+      zipcode = address.detoken!(REGEXES[:zipcode])
+
+      state = address.detoken!(REGEXES[:state])
+      state = StateCodes[state] || state
+
+      city = address.detoken!(REGEXES[:city])
+      city = ZipCityMap[zipcode] if zipcode && ZipCityMap[zipcode]
+
+      unit = address.detoken!(REGEXES[:unit])
+
+      self.new(:city => city,
+               :state => state,
+               :zipcode => zipcode)
     end
 
     #Iteratively take chunks off of the string.
@@ -185,4 +214,24 @@ module Normalic
   end
 
   class ParseError < StandardError; end
+
+  private
+
+  String.class_eval do
+    def detoken!(regex)
+      regex_p = Regexp.new('\W+(' + regex.source + ')$', regex.source)
+      token_p = self.cut!(regex_p)
+      token_p ? token_p.cut!(regex_p, 1) : nil
+    end
+
+    def cut!(regex, match_index=0)
+      if match = self.match(regex)
+        i1, i2 = match.offset(match_index)
+        self[i1...i2] = ''
+        match[match_index]
+      else
+        nil
+      end
+    end
+  end
 end
