@@ -52,14 +52,14 @@ module Normalic
 
   # only handles U.S. addresses
   class Address
-    UNIT_TYPE_REGEX = /ap(artmen)?t|box|building|bldg|dep(artmen)?t|fl(oor)?|po( box)?|r(oo)?m|s(ui)?te|un(i)?t/
+    #UNIT_TYPE_REGEX = /ap(artmen)?t|box|building|bldg|dep(artmen)?t|fl(oor)?|po( box)?|r(oo)?m|s(ui)?te|un(i)?t/
     REGEXES = {:country => /usa/,
                :zipcode => /\d{5}(-\d{4})?/,
                :state => Regexp.new(StateCodes.values * '|' + '|' +
                                     StateCodes.keys * '|'),
                :city => /\w+(\s\w+)*/,
-               :unit => Regexp.new('(#?\w+\W+(' + UNIT_TYPE_REGEX.source + '))|' +
-                                   '((' + UNIT_TYPE_REGEX.source + ')\W+#?\w+)'),
+               #:unit => Regexp.new('(#?\w+\W+(' + UNIT_TYPE_REGEX.source + '))|' +
+               #                    '((' + UNIT_TYPE_REGEX.source + ')\W+#?\w+)'),
                :directional => Regexp.new(Directional.keys * '|' + '|' +
                                           Directional.values * '|'),
                :type => Regexp.new(StreetTypesList * '|'),
@@ -97,8 +97,8 @@ module Normalic
     end
 
     def to_s
-      parts = [line1, city, state, zipcode].select {|e| e ? true : false}
-      parts.join(', ')
+      parts = [line1, city, state].select {|e| e ? true : false}
+      parts.join(', ') + (zipcode ? ' ' + zipcode : '')
     end
 
     def line1
@@ -158,7 +158,7 @@ module Normalic
         city = city.cut!(REGEXES[:city]) if city
       end
 
-      address.detoken_rstrip!(REGEXES[:unit])
+      #address.detoken_rstrip!(REGEXES[:unit])
 
       if m = address.match(REGEXES[:intersection])
         intersection = true
@@ -350,7 +350,7 @@ module Normalic
     end
 
     def detoken_rstrip!(regex)
-      regex_p = Regexp.new('.*((\W|\A)(' + regex.source + ')\W.*)', regex.options)
+      regex_p = Regexp.new('.*((\W|\A)(' + regex.source + ')(\W.*|\Z))', regex.options)
       oldself = self.clone
       self.cut!(regex_p, 1) ? oldself.match(regex_p)[3] : nil
     end
