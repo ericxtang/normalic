@@ -43,11 +43,7 @@ module Normalic
     end
 
     def ==(other)
-      if self.to_s == other.to_s
-        true
-      else
-        false
-      end
+      self.to_s == other.to_s ? true : false
     end
   end
 end

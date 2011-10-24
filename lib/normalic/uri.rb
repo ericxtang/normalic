@@ -93,11 +93,16 @@ module Normalic
     end
 
     def ==(other)
-      if self.to_s == other.to_s
-        true
-      else
-        false
-      end
+      self.to_s == other.to_s ? true : false
+    end
+
+    def match_essential?(other)
+      return false unless tld == other.tld
+      return false unless domain == other.domain
+      return false unless subdomain == other.subdomain ||
+                          (subdomain == 'www' && !other.subdomain) ||
+                          (!subdomain && other.subdomain == 'www')
+      true
     end
 
     private

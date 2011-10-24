@@ -60,6 +60,24 @@ describe "Normalic::URI" do
     uri[:query_hash].should == nil
     uri[:fragment].should == nil
   end
+
+  it "should match_essential? a nil subdomain against a 'www' subdomain" do
+    uri1 = Normalic::URI.parse("http://www.github.com")
+    uri2 = Normalic::URI.parse("http://github.com")
+    uri1.match_essential?(uri2).should == true
+  end
+
+  it "should match_essential? using the subdomain, domain, and tld" do
+    uri1 = Normalic::URI.parse("http://www.hyperpublic.com")
+    uri2 = Normalic::URI.parse("http://oxcart.hyperpublic.com")
+    uri1.match_essential?(uri2).should == false
+  end
+
+  it "should match_essential? using ONLY the subdomain, domain, and tld" do
+    uri1 = Normalic::URI.parse("http://www.hyperpublic.com/placesplus")
+    uri2 = Normalic::URI.parse("http://www.hyperpublic.com/deals")
+    uri1.match_essential?(uri2).should == true
+  end
 end
 
 
