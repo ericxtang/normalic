@@ -1,6 +1,68 @@
 require 'lib/normalic'
 
 
+describe "Normalic::URI" do
+
+  it "should parse a well-formatted URI" do
+    uri = Normalic::URI.parse("http://mike@mkscrg.github.com:80/about.html?lang=ruby&dvcs=git#blog")
+    uri[:scheme].should == "http"
+    uri[:user].should == "mike"
+    uri[:subdomain].should == "mkscrg"
+    uri[:domain].should == "github"
+    uri[:tld].should == "com"
+    uri[:port].should == "80"
+    uri[:path].should == "/about.html"
+    uri[:query_hash].should == {"lang" => "ruby", "dvcs" => "git"}
+    uri[:fragment].should == "blog"
+  end
+
+  it "should print a parsed URI correctly" do
+    uri = Normalic::URI.parse("http://mike@mkscrg.github.com:80/about.html?lang=ruby&dvcs=git#blog")
+    ["http://mike@mkscrg.github.com:80/about.html?lang=ruby&dvcs=git#blog",
+     "http://mike@mkscrg.github.com:80/about.html?dvcs=git&lang=ruby#blog"].include?(uri.to_s.should)
+  end
+
+  it "should parse a bare domain and tld" do
+    uri = Normalic::URI.parse("github.com")
+    uri[:scheme].should == nil
+    uri[:user].should == nil
+    uri[:subdomain].should == nil
+    uri[:domain].should == "github"
+    uri[:tld].should == "com"
+    uri[:port].should == nil
+    uri[:path].should == "/"
+    uri[:query_hash].should == nil
+    uri[:fragment].should == nil
+  end
+
+  it "should normalize consecutive slashes and strip trailing slashes in the path" do
+    uri = Normalic::URI.parse("github.com/mkscrg//normalic/")
+    uri[:scheme].should == nil
+    uri[:user].should == nil
+    uri[:subdomain].should == nil
+    uri[:domain].should == "github"
+    uri[:tld].should == "com"
+    uri[:port].should == nil
+    uri[:path].should == "/mkscrg/normalic"
+    uri[:query_hash].should == nil
+    uri[:fragment].should == nil
+  end
+
+  it "should normalize relative path segments: '.' and '..'" do
+    uri = Normalic::URI.parse("github.com/ericxtang/expresso/../normalic")
+    uri[:scheme].should == nil
+    uri[:user].should == nil
+    uri[:subdomain].should == nil
+    uri[:domain].should == "github"
+    uri[:tld].should == "com"
+    uri[:port].should == nil
+    uri[:path].should == "/ericxtang/normalic"
+    uri[:query_hash].should == nil
+    uri[:fragment].should == nil
+  end
+end
+
+
 describe "Normalic::PhoneNumber" do
 
   it "should parse a bare phone number" do

@@ -1,9 +1,136 @@
-require 'rubygems'
-require 'ruby-debug'
-
+require 'cgi'
 require 'constants'
 
 module Normalic
+  class URI
+    attr_accessor :scheme, :user,
+                  :subdomain, :domain, :tld,
+                  :port, :path, :query_hash, :fragment
+
+    def initialize(fields={})
+      @scheme = fields[:scheme]
+      @user = fields[:user]
+      @subdomain = fields[:subdomain]
+      @domain = fields[:domain]
+      @tld = fields[:tld]
+      @port = fields[:port]
+      @path = fields[:path]
+      @query_hash = fields[:query_hash]
+      @fragment = fields[:fragment]
+    end
+
+    def self.parse(raw)
+      url = raw.to_s
+
+      # parts before the authority, left-to-right
+      scheme = url.cut!(/^\w+:\/\//) and scheme.cut!(/:\/\/$/)
+
+      # parts after the authority, right-to-left
+      fragment = url.cut!(/#.*$/) and fragment.cut!(/^#/)
+      query = url.cut!(/\?.*$/) and query.cut!(/^\?/)
+      query_hash = query ? self.parse_query(query) : nil
+      path = self.normalize_path(url.cut!(/\/.*$/))
+
+      # parse the authority
+      user = url.cut!(/^.+@/) and user.cut!(/@$/)
+      port = url.cut!(/:\d+$/) and port.cut!(/^:/)
+      tld = url.cut!(/\.\w+$/) and tld.cut!(/^\./)
+      domain = url.cut!(/(\.|\A)\w+$/) and domain.cut!(/^\./)
+      subdomain = url.empty? ? nil : url
+
+      self.new(:scheme => scheme,
+               :user => user,
+               :subdomain => subdomain,
+               :domain => domain,
+               :tld => tld,
+               :port => port,
+               :path => path,
+               :query_hash => query_hash,
+               :fragment => fragment)
+    end
+
+    def to_s
+      scheme_s = scheme ? scheme + '://' : nil
+      user_s = user ? user + '@' : nil
+
+      host_s = [subdomain, domain, tld].select do |e|
+        e ? true : false
+      end.join('.')
+      host_s = nil if host_s == ''
+
+      port_s = port ? ':' + port : nil
+      path_s = path
+
+      if query_hash
+        query_s = '?' + query_hash.to_a.collect do |kv|
+          kv[0].to_s + '=' + kv[1].to_s
+        end.join('&')
+      else
+        query_s = nil
+      end
+
+      fragment_s = fragment ? '#' + fragment : nil
+
+      [scheme_s, user_s, host_s, port_s,
+       path_s, query_s, fragment_s].select do |e|
+         e ? true : false
+       end.join
+    end
+
+    def [](field_name)
+      begin
+        self.send(field_name.to_s)
+      rescue NoMethodError => e
+        nil
+      end
+    end
+
+    def []=(field_name, value)
+      begin
+        self.send("#{field_name}=", value)
+      rescue NoMethodError => e
+        nil
+      end
+    end
+
+    def ==(other)
+      if self.to_s == other.to_s
+        true
+      else
+        false
+      end
+    end
+
+    private
+
+    def self.normalize_path(raw)
+      parts = raw.to_s.split('/')
+      clean_parts = parts.inject([]) do |cpts, pt|
+        if pt.empty? || pt == '.'
+          cpts
+        elsif pt == '..'
+          cpts[0..-2]
+        else
+          cpts + [pt]
+        end
+      end
+      '/' + clean_parts.join('/')
+    end
+
+    def self.parse_query(raw)
+      url = raw.to_s
+      url.cut!(/^\?/)
+      kvs = url.split('&')
+
+      query_hash = {}
+      kvs.each do |kv|
+        k, v = kv.split('=')
+        query_hash[k] = CGI.unescape(v)
+      end
+      query_hash
+    end
+  end
+
   # only handles U.S. phone numbers
   class PhoneNumber
     attr_accessor :npa, :nxx, :slid
@@ -87,6 +214,15 @@ module Normalic
       @intersection = fields[:intersection] || false
     end
 
+    def self.parse(raw)
+      address = raw.to_s
+      clean = self.clean(address)
+      tokens = self.tokenize(clean)
+      normd = self.normalize(tokens)
+
+      self.new(normd)
+    end
+
     def [](field_name)
       begin
         self.send(field_name.to_s)
@@ -138,15 +274,6 @@ module Normalic
       return false unless !direction || !other.direction ||
                           direction == other.direction
       true
-    end
-
-    def self.parse(raw)
-      address = raw.to_s
-      clean = self.clean(address)
-      tokens = self.tokenize(clean)
-      normd = self.normalize(tokens)
-
-      self.new(normd)
     end
 
     private
@@ -291,85 +418,6 @@ module Normalic
         nil
       end
     end
-
-#    #Iteratively take chunks off of the string.
-#    def self.parse(address)
-#      address.strip!
-#      regex = {
-#        :unit => /(((\#?\w*)?\W*(su?i?te|p\W*[om]\W*b(?:ox)?|dept|department|ro*m|floor|fl|apt|apartment|unit|box))$)|(\W((su?i?te|p\W*[om]\W*b(?:ox)?|dept|department|ro*m|floor|fl|apt|apartment|unit|box)\W*(\#?\w*)?)\W{0,3}$)/i,
-#        :direct => Regexp.new(Directional.keys * '|' + '|' + Directional.values * '\.?|',Regexp::IGNORECASE),
-#        :type => Regexp.new('(' + StreetTypes_list * '|' + ')\\W*?$',Regexp::IGNORECASE),
-#        :number => /\d+-?\d*/,
-#        :fraction => /\d+\/\d+/,
-#        :country => /\W+USA$/,
-#        :zipcode => /\W+(\d{5}|\d{5}-\d{4})$/,
-#        :state => Regexp.new('\W+(' + StateCodes.values * '|' + '|' + StateCodes.keys * '|' + ')$',Regexp::IGNORECASE),
-#      }
-#      regex[:street] = Regexp.new('((' + regex[:direct].source + ')\\W)?\\W*(.*)\\W*(' + regex[:type].source + ')?', Regexp::IGNORECASE)
-#
-#      #get rid of USA at the end
-#      country_code = address[regex[:country]]
-#      address.gsub!(regex[:country], "")
-#
-#      zipcode = address[regex[:zipcode]]
-#      address.gsub!(regex[:zipcode], "")
-#      zipcode.gsub!(/\W/, "") if zipcode
-#
-#      state = address[regex[:state]]
-#      address.gsub!(regex[:state], "")
-#      state.gsub!(/(^\W*|\W*$)/, "").downcase! if state
-#      state = StateCodes[state] || state
-#
-#      if ZipCityMap[zipcode]
-#        regex[:city] = Regexp.new("\\W+" + ZipCityMap[zipcode] + "$", Regexp::IGNORECASE)
-#        regex[:city] = /,.*$/ if !address[regex[:city]]
-#        city = ZipCityMap[zipcode]
-#      else
-#        regex[:city] = /,.*$/
-#        city = address[regex[:city]] 
-#        city.gsub!(/(^\W*|\W*$)/, "").downcase! if city
-#      end
-#
-#      address.gsub!(regex[:city], "")
-#      address.gsub!(regex[:unit], "")
-#      address.gsub!(Regexp.new('\W(' + regex[:direct].source + ')\\W{0,3}$', Regexp::IGNORECASE), "")
-#
-#      type = address[regex[:type]]
-#      address.gsub!(regex[:type], "")
-#      type.gsub!(/(^\W*|\W*$)/, "").downcase! if type
-#      type = StreetTypes[type] || type if type
-#
-#      # arr: [ , , , ]
-#      if address =~ /(\Wand\W|\W\&\W)/
-#        #intersections.  print as is
-#        address.gsub!(/(\Wand\W|\W\&\W)/, " and ")
-#        arr = ["", address, "", ""]
-#      else
-#        regex[:address] = Regexp.new('^\W*(' + regex[:number].source + '\\W)?\W*(?:' + regex[:fraction].source + '\W*)?' + regex[:street].source, Regexp::IGNORECASE)
-#        arr = regex[:address].match(address).to_a
-#      end
-#
-#      number = arr[1].strip if arr[1]
-#      if arr[2] && (!arr[4] || arr[4].empty?)
-#        street = arr[2].strip.downcase
-#      else
-#        dir = Directional[arr[2].strip.downcase] || arr[2].strip.downcase if arr[2]
-#        dir.gsub!(/\W/, "") if dir
-#      end
-#      street = arr[4].strip.downcase if arr[4] && !street
-#
-#      self.new(
-#        {
-#          :number => number,
-#          :direction => dir ? dir.upcase : nil,
-#          :street => titlize(street),
-#          :type => titlize(type),
-#          :city => titlize(city),
-#          :state => state ? state.upcase : nil,
-#          :zipcode => zipcode
-#        }
-#      )
-#    end
   end
 
   private
