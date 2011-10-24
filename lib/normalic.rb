@@ -6,13 +6,12 @@ require 'constants'
 module Normalic
   # only handles U.S. phone numbers
   class PhoneNumber
-    attr_accessor :npa, :nxx, :slid, :ext
+    attr_accessor :npa, :nxx, :slid
 
     def initialize(fields={})
       @npa = fields[:npa]
       @nxx = fields[:nxx]
       @slid = fields[:slid]
-      @ext = fields[:ext]
     end
 
     def self.parse(raw)
@@ -21,16 +20,15 @@ module Normalic
         digs = trim
       end
       if digs.length < 10
-        raise(ParseError, 'Invalid phone number: less than 10 digits')
+        return nil
       end
       self.new(:npa => digs[0,3],
                :nxx => digs[3,3],
-               :slid => digs[6,4],
-               :ext => digs.length > 10 ? digs[10..-1] : nil)
+               :slid => digs[6,4])
     end
 
     def to_s
-      "#{npa} #{nxx} #{slid}" + (ext ? " #{ext}" : '')
+      "#{npa} #{nxx} #{slid}"
     end
 
     def [](field_name)
@@ -48,21 +46,30 @@ module Normalic
         nil
       end
     end
+
+    def ==(other)
+      if self.to_s == other.to_s
+        true
+      else
+        false
+      end
+    end
   end
 
   # only handles U.S. addresses
   class Address
-    #UNIT_TYPE_REGEX = /ap(artmen)?t|box|building|bldg|dep(artmen)?t|fl(oor)?|po( box)?|r(oo)?m|s(ui)?te|un(i)?t/
+    UNIT_TYPE_REGEX = /ap(artmen)?t|box|building|bldg|dep(artmen)?t|fl(oor)?|po( box)?|r(oo)?m|s(ui)?te|un(i)?t/
     REGEXES = {:country => /usa/,
                :zipcode => /\d{5}(-\d{4})?/,
-               :state => Regexp.new(StateCodes.values * '|' + '|' +
-                                    StateCodes.keys * '|'),
+               :state => Regexp.new(STATE_CODES.values * '|' + '|' +
+                                    STATE_CODES.keys * '|'),
                :city => /\w+(\s\w+)*/,
-               #:unit => Regexp.new('(#?\w+\W+(' + UNIT_TYPE_REGEX.source + '))|' +
-               #                    '((' + UNIT_TYPE_REGEX.source + ')\W+#?\w+)'),
-               :directional => Regexp.new(Directional.keys * '|' + '|' +
-                                          Directional.values * '|'),
-               :type => Regexp.new(StreetTypesList * '|'),
+               :unit => Regexp.new('(#\w+)|' +
+                                   '(#?\w+\W+(' + UNIT_TYPE_REGEX.source + '))|' +
+                                   '((' + UNIT_TYPE_REGEX.source + ')\W+#?\w+)'),
+               :directional => Regexp.new(DIRECTIONAL.keys * '|' + '|' +
+                                          DIRECTIONAL.values * '|'),
+               :type => Regexp.new(STREET_TYPES_LIST * '|'),
                :number => /\d+/,
                :street => /\w+(\s\w+)*/,
                :intersection => /(.+)\W+(and|&)\W+(.+)/}
@@ -112,9 +119,31 @@ module Normalic
       end
     end
 
-    def self.parse(address)
-      address = self.clean(address)
-      tokens = self.tokenize(address)
+    def ==(other)
+      if self.to_s == other.to_s
+        true
+      else
+        false
+      end
+    end
+
+    def match_essential?(other)
+      return false unless zipcode == other.zipcode
+      return false unless state == other.state
+      return false unless city == other.city
+      return false unless street == other.street
+      return false unless number == other.number
+      return false unless !type || !other.type ||
+                          type == other.type
+      return false unless !direction || !other.direction ||
+                          direction == other.direction
+      true
+    end
+
+    def self.parse(raw)
+      address = raw.to_s
+      clean = self.clean(address)
+      tokens = self.tokenize(clean)
       normd = self.normalize(tokens)
 
       self.new(normd)
@@ -147,18 +176,20 @@ module Normalic
 
       address.detoken!(REGEXES[:country])
       zipcode = address.detoken!(REGEXES[:zipcode])
+
       state = address.detoken!(REGEXES[:state])
 
-      if zipcode && (zipcity = ZipCityMap[zipcode])
+      if zipcode && ZIP_CITY_MAP[zipcode] &&
+         (zipcity = ZIP_CITY_MAP[zipcode][:city])
         city = address.detoken!(Regexp.new(zipcity))
       end
       unless city
         city = address.cut!(Regexp.new('\W*,\W+(' + REGEXES[:city].source +
-                                       ')\W*$'), 1)
+                                       ')\W*$'))
         city = city.cut!(REGEXES[:city]) if city
       end
 
-      #address.detoken_rstrip!(REGEXES[:unit])
+      address.detoken_rstrip!(REGEXES[:unit])
 
       if m = address.match(REGEXES[:intersection])
         intersection = true
@@ -202,7 +233,7 @@ module Normalic
       tokens = tokens.clone
 
       tokens[:zipcode] = self.normalize_zipcode(tokens[:zipcode])
-      tokens[:state] = self.normalize_state(tokens[:state])
+      tokens[:state] = self.normalize_state(tokens[:state], tokens[:zipcode])
       tokens[:city] = self.normalize_city(tokens[:city], tokens[:zipcode])
 
       if tokens[:intersection]
@@ -222,9 +253,12 @@ module Normalic
       zipcode ? zipcode[0,5] : nil
     end
 
-    def self.normalize_state(state)
-      if state
-        state = StateCodes[state] || state
+    def self.normalize_state(state, zipcode=nil)
+      if zipcode && ZIP_CITY_MAP[zipcode]
+        state = ZIP_CITY_MAP[zipcode][:state]
+        state.upcase
+      elsif state
+        state = STATE_CODES[state] || state
         state.upcase
       else
         nil
@@ -232,13 +266,13 @@ module Normalic
     end
 
     def self.normalize_city(city, zipcode=nil)
-      city = ZipCityMap[zipcode] if zipcode && ZipCityMap[zipcode]
+      city = ZIP_CITY_MAP[zipcode][:city] if zipcode && ZIP_CITY_MAP[zipcode]
       city ? self.titlize(city) : nil
     end
 
     def self.normalize_type(type)
       if type
-        type = StreetTypes[type] || type
+        type = STREET_TYPES[type] || type
         self.titlize(type) + '.'
       else
         nil
@@ -251,7 +285,7 @@ module Normalic
 
     def self.normalize_direction(direction)
       if direction
-        direction = Directional[direction] || direction
+        direction = DIRECTIONAL[direction] || direction
         direction.upcase
       else
         nil
@@ -337,8 +371,6 @@ module Normalic
 #      )
 #    end
   end
-
-  class ParseError < StandardError; end
 
   private
 
