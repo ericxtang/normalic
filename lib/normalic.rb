@@ -24,16 +24,6 @@ module Normalic
       self.cut!(regex_p) ? oldself.match(regex_p)[1] : nil
     end
 
-#    def splitr(regex, match_index=0)
-#      if match = self.match(regex)
-#        i1, i2 = match.offset(match_index)
-#        j1, j2 = match.offset(0)
-#        return self[0...j1], self[i1...i2], self[j2...self.length]
-#      else
-#        self, nil, nil
-#      end
-#    end
-
     def cut!(regex, match_index=0)
       if match = self.match(regex)
         i1, i2 = match.offset(match_index)
