@@ -23,6 +23,7 @@ module Normalic
 
       # parts before the authority, left-to-right
       scheme = url.cut!(/^\w+:\/\//) and scheme.cut!(/:\/\/$/)
+      scheme ||= 'http'
 
       # parts after the authority, right-to-left
       fragment = url.cut!(/#.*$/) and fragment.cut!(/^#/)
@@ -35,7 +36,9 @@ module Normalic
       port = url.cut!(/:\d+$/) and port.cut!(/^:/)
       tld = url.cut!(/\.\w+$/) and tld.cut!(/^\./)
       domain = url.cut!(/(\.|\A)\w+$/) and domain.cut!(/^\./)
-      subdomain = url.empty? ? nil : url
+      subdomain = url.empty? ? 'www' : url
+
+      return nil unless tld && domain
 
       self.new(:scheme => scheme,
                :user => user,
