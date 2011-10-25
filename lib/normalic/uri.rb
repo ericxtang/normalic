@@ -132,7 +132,7 @@ module Normalic
       query_hash = {}
       kvs.each do |kv|
         k, v = kv.split('=')
-        query_hash[k] = CGI.unescape(v)
+        query_hash[k] = CGI.unescape(v || '')
       end
       query_hash
     end

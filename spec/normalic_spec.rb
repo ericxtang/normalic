@@ -22,11 +22,11 @@ describe "Normalic::URI" do
      "http://mike@mkscrg.github.com:80/about.html?dvcs=git&lang=ruby#blog"].include?(uri.to_s.should)
   end
 
-  it "should parse a bare domain and tld" do
+  it "should parse a bare domain and tld with default scheme and subdomain" do
     uri = Normalic::URI.parse("github.com")
-    uri[:scheme].should == nil
+    uri[:scheme].should == "http"
     uri[:user].should == nil
-    uri[:subdomain].should == nil
+    uri[:subdomain].should == "www"
     uri[:domain].should == "github"
     uri[:tld].should == "com"
     uri[:port].should == nil
@@ -36,10 +36,10 @@ describe "Normalic::URI" do
   end
 
   it "should normalize consecutive slashes and strip trailing slashes in the path" do
-    uri = Normalic::URI.parse("github.com/mkscrg//normalic/")
-    uri[:scheme].should == nil
+    uri = Normalic::URI.parse("https://github.com/mkscrg//normalic/")
+    uri[:scheme].should == "https"
     uri[:user].should == nil
-    uri[:subdomain].should == nil
+    uri[:subdomain].should == "www"
     uri[:domain].should == "github"
     uri[:tld].should == "com"
     uri[:port].should == nil
@@ -50,9 +50,9 @@ describe "Normalic::URI" do
 
   it "should normalize relative path segments: '.' and '..'" do
     uri = Normalic::URI.parse("github.com/ericxtang/expresso/../normalic")
-    uri[:scheme].should == nil
+    uri[:scheme].should == "http"
     uri[:user].should == nil
-    uri[:subdomain].should == nil
+    uri[:subdomain].should == "www"
     uri[:domain].should == "github"
     uri[:tld].should == "com"
     uri[:port].should == nil

@@ -1,6 +1,6 @@
 = Normalic
 
-Easy parser/normalizer for U.S. addresses, U.S. phone numbers, and URIs
+Easy parser/normalizer for U.S. addresses, U.S. phone numbers, and URIs.
 
 == More info
 
