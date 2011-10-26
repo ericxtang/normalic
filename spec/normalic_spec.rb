@@ -78,6 +78,23 @@ describe "Normalic::URI" do
     uri2 = Normalic::URI.parse("http://www.hyperpublic.com/deals")
     uri1.match_essential?(uri2).should == true
   end
+
+  it "should be nondestructive" do
+    raw = "github.com"
+    raw_orig = raw.clone
+    uri = Normalic::URI.parse(raw)
+    raw_orig.should == raw
+    uri[:scheme].should == "http"
+    uri[:user].should == nil
+    uri[:subdomain].should == "www"
+    uri[:domain].should == "github"
+    uri[:tld].should == "com"
+    uri[:port].should == nil
+    uri[:path].should == "/"
+    uri[:query_hash].should == nil
+    uri[:fragment].should == nil
+  end
+
 end
 
 
@@ -106,6 +123,16 @@ describe "Normalic::PhoneNumber" do
 
   it "should parse a phone number with non-digit formatting" do
     ph = Normalic::PhoneNumber.parse("+1 (234) 567 - 8901")
+    ph[:npa].should == "234"
+    ph[:nxx].should == "567"
+    ph[:slid].should == "8901"
+  end
+
+  it "should be nondestructive" do
+    raw = "2345678901"
+    raw_orig = raw.clone
+    ph = Normalic::PhoneNumber.parse(raw)
+    raw_orig.should == raw
     ph[:npa].should == "234"
     ph[:nxx].should == "567"
     ph[:slid].should == "8901"
@@ -274,4 +301,20 @@ describe "Normalic::Address" do
     addr = Normalic::Address.parse("167 West 4th Street, New York, NY 10014")
     addr.to_s.should == "167 W 4th St., New York, NY 10014"
   end
+
+  it "should be nondestructive" do
+    raw = "167 West 4th Street, New York, NY 10014"
+    raw_orig = raw.clone
+    addr = Normalic::Address.parse(raw)
+    raw_orig.should == raw
+    addr[:number].should == "167"
+    addr[:direction].should == "W"
+    addr[:street].should == "4th"
+    addr[:type].should == "St."
+    addr[:city].should == "New York"
+    addr[:state].should == "NY"
+    addr[:zipcode].should == "10014"
+    addr[:intersection].should == false
+  end
+
 end

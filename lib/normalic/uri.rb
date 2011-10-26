@@ -19,7 +19,7 @@ module Normalic
     end
 
     def self.parse(raw)
-      url = raw.to_s
+      url = raw.to_s.clone
 
       # parts before the authority, left-to-right
       scheme = url.cut!(/^\w+:\/\//) and scheme.cut!(/:\/\/$/)
@@ -125,7 +125,7 @@ module Normalic
     end
 
     def self.parse_query(raw)
-      url = raw.to_s
+      url = raw.to_s.clone
       url.cut!(/^\?/)
       kvs = url.split('&')
 

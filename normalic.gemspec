@@ -6,7 +6,7 @@ Gem::Specification.new do |s|
 
   s.required_rubygems_version = Gem::Requirement.new(">= 1.2") if s.respond_to? :required_rubygems_version=
   s.authors = [%q{Eric Tang}]
-  s.date = %q{2011-10-25}
+  s.date = %q{2011-10-26}
   s.description = %q{Normalize U.S addresses}
   s.email = %q{eric.x.tang@gmail.com}
   s.extra_rdoc_files = [%q{README.rdoc}, %q{lib/constants.rb}, %q{lib/normalic.rb}, %q{lib/normalic/address.rb}, %q{lib/normalic/phone_number.rb}, %q{lib/normalic/uri.rb}]
