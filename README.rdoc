@@ -24,3 +24,8 @@ It tries to correct mal-formed input to the best of its ability.
     >> uri = Normalic::URI.parse("github.com/ericxtang/expresso/../normalic/")
     >> uri.to_s
     => "http://www.github.com/ericxtang/normalic"
+
+== Note on URI parsing behavior
+
+In the name of normalization, the URI class uses +http+ and +www+ as the
+default scheme and subdomain if they are missing from the input string.
