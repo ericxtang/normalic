@@ -1,3 +1,4 @@
+License.txt
 Manifest
 README.rdoc
 Rakefile
@@ -6,4 +7,5 @@ lib/normalic.rb
 lib/normalic/address.rb
 lib/normalic/phone_number.rb
 lib/normalic/uri.rb
+normalic.gemspec
 spec/normalic_spec.rb
