@@ -275,6 +275,53 @@ describe "Normalic::Address" do
     addr[:intersection].should == false
   end
 
+  it "should parse an address from a hash of fields" do
+    addr = Normalic::Address.normalize_fields(:number => 201,
+                                              :street => "Varick",
+                                              "type" => "St.",
+                                              :city => "New York",
+                                              :state => "NY",
+                                              "zipcode" => 10014)
+    addr[:number].should == "201"
+    addr[:direction].should == nil
+    addr[:street].should == "Varick"
+    addr[:type].should == "St."
+    addr[:city].should == "New York"
+    addr[:state].should == "NY"
+    addr[:zipcode].should == "10014"
+    addr[:intersection].should == false
+  end
+
+  it "should parse an address from a hash of fields including 'address'" do
+    addr = Normalic::Address.normalize_fields("address" => "201 Varick St.",
+                                              :city => "New York",
+                                              :state => "NY",
+                                              :zipcode => 10014)
+    addr[:number].should == "201"
+    addr[:direction].should == nil
+    addr[:street].should == "Varick"
+    addr[:type].should == "St."
+    addr[:city].should == "New York"
+    addr[:state].should == "NY"
+    addr[:zipcode].should == "10014"
+    addr[:intersection].should == false
+  end
+
+  it "should parse an address from a hash of fields including 'address_line1'" do
+    addr = Normalic::Address.normalize_fields("address_line1" => "201 Varick St.",
+                                              :city => "New York",
+                                              :state => "NY",
+                                              :zipcode => 10014)
+    addr[:number].should == "201"
+    addr[:direction].should == nil
+    addr[:street].should == "Varick"
+    addr[:type].should == "St."
+    addr[:city].should == "New York"
+    addr[:state].should == "NY"
+    addr[:zipcode].should == "10014"
+    addr[:intersection].should == false
+  end
+
   it "should use dot notation" do
     addr = Normalic::Address.parse("871 west washington street, new york, ny 10014")
     addr.number.should == "871"
