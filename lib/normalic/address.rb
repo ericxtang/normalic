@@ -33,10 +33,24 @@ module Normalic
     end
 
     def self.parse(raw)
-      address = raw.to_s
-      clean = self.clean(address)
-      tokens = self.tokenize(clean)
-      normd = self.normalize(tokens)
+      clean = clean(raw)
+      tokens = tokenize(clean)
+      normd = normalize(tokens)
+
+      self.new(normd)
+    end
+
+    def self.normalize_fields(fields)
+      clean_fields = Hash[*fields.collect do |(k, v)|
+        k2 = k.is_a?(Symbol) ? k : clean(k).gsub(/\W+/,'').to_sym
+        [k2, clean(v)]
+      end.flatten(1)]
+      if (address = clean_fields.delete(:address) ||
+                    clean_fields.delete(:address_line1))
+        clean_fields.merge!(Hash[[:type, :street, :direction,
+                                  :number].zip(tokenize_street(address))])
+      end
+      normd = normalize(clean_fields)
 
       self.new(normd)
     end
@@ -100,8 +114,8 @@ module Normalic
       end
     end
 
-    def self.clean(address)
-      address = address.clone
+    def self.clean(raw)
+      address = raw.to_s.dup
 
       address.downcase!
       address.gsub!("\n",', ')
@@ -113,7 +127,7 @@ module Normalic
     end
 
     def self.tokenize(address)
-      address = address.clone
+      address = address.dup
 
       address.detoken!(REGEXES[:country])
       zipcode = address.detoken!(REGEXES[:zipcode])
@@ -134,15 +148,15 @@ module Normalic
 
       if m = address.match(REGEXES[:intersection])
         intersection = true
-        t1, s1, d1 = self.tokenize_street(m[1], false)
-        t2, s2, d2 = self.tokenize_street(m[3], false)
+        t1, s1, d1 = tokenize_street(m[1], false)
+        t2, s2, d2 = tokenize_street(m[3], false)
         type = [t1, t2]
         street = [s1, s2]
         direction = [d1, d2]
         number = nil
       else
         intersection = false
-        type, street, direction, number = self.tokenize_street(address)
+        type, street, direction, number = tokenize_street(address)
       end
 
       {:zipcode => zipcode,
@@ -156,7 +170,7 @@ module Normalic
     end
 
     def self.tokenize_street(address, has_number=true)
-      address = address.clone
+      address = address.dup
 
       number = has_number ? address.detoken_front!(REGEXES[:number]) : nil
       direction = address.detoken_front!(REGEXES[:directional]) ||
@@ -173,18 +187,18 @@ module Normalic
     def self.normalize(tokens)
       tokens = tokens.clone
 
-      tokens[:zipcode] = self.normalize_zipcode(tokens[:zipcode])
-      tokens[:state] = self.normalize_state(tokens[:state], tokens[:zipcode])
-      tokens[:city] = self.normalize_city(tokens[:city], tokens[:zipcode])
+      tokens[:zipcode] = normalize_zipcode(tokens[:zipcode])
+      tokens[:state] = normalize_state(tokens[:state], tokens[:zipcode])
+      tokens[:city] = normalize_city(tokens[:city], tokens[:zipcode])
 
       if tokens[:intersection]
-        tokens[:type].collect! {|t| self.normalize_type(t)}
-        tokens[:street].collect! {|s| self.normalize_street(s)}
-        tokens[:direction].collect! {|d| self.normalize_direction(d)}
+        tokens[:type].collect! {|t| normalize_type(t)}
+        tokens[:street].collect! {|s| normalize_street(s)}
+        tokens[:direction].collect! {|d| normalize_direction(d)}
       else
-        tokens[:type] = self.normalize_type(tokens[:type])
-        tokens[:street] = self.normalize_street(tokens[:street])
-        tokens[:direction] = self.normalize_direction(tokens[:direction])
+        tokens[:type] = normalize_type(tokens[:type])
+        tokens[:street] = normalize_street(tokens[:street])
+        tokens[:direction] = normalize_direction(tokens[:direction])
       end
 
       tokens
@@ -208,20 +222,20 @@ module Normalic
 
     def self.normalize_city(city, zipcode=nil)
       city = ZIP_CITY_MAP[zipcode][:city] if zipcode && ZIP_CITY_MAP[zipcode]
-      city ? self.titlize(city) : nil
+      city ? titlize(city) : nil
     end
 
     def self.normalize_type(type)
       if type
         type = STREET_TYPES[type] || type
-        self.titlize(type) + '.'
+        titlize(type) + '.'
       else
         nil
       end
     end
 
     def self.normalize_street(street)
-      street ? self.titlize(street) : nil
+      street ? titlize(street) : nil
     end
 
     def self.normalize_direction(direction)
