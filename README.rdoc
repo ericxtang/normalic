@@ -14,16 +14,42 @@ It tries to correct mal-formed input to the best of its ability.
 == Example
 
     >> address = Normalic::Address.parse("201 Varick St. floor 12th, New York, NY 10014")
+    >> address.number
+    => "201"
+
+    >> address.street
+    => "Varick"
+
     >> address.to_s
     => "201 Varick St., New York, NY 10014"
 
+
     >> phone = Normalic::PhoneNumber.parse("00 + 1* (212) 989-9741 ext. 123")
+    >> phone.npa
+    => "212"
+
     >> phone.to_s
     => "212 989 9741"
 
+
     >> uri = Normalic::URI.parse("github.com/ericxtang/expresso/../normalic/")
+    >> uri.domain
+    => "github"
+
+    >> uri.scheme
+    => "http"
+
     >> uri.to_s
     => "http://www.github.com/ericxtang/normalic"
+
+
+    >> addr = Normalic::Address.normalize_fields("address" => "201 Varick St.",
+                                              :city => "New York",
+                                              :state => "NY",
+                                              :zipcode => 10014)
+    >> addr.number
+    => "201"
+
 
 == Note on URI parsing behavior
 
