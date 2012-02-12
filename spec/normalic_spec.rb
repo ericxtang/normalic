@@ -1,4 +1,4 @@
-require 'lib/normalic'
+require File.join(File.dirname(__FILE__), '..', 'lib', 'normalic')
 
 
 describe "Normalic::URI" do
@@ -28,6 +28,20 @@ describe "Normalic::URI" do
     uri[:user].should == nil
     uri[:subdomain].should == "www"
     uri[:domain].should == "github"
+    uri[:tld].should == "com"
+    uri[:port].should == nil
+    uri[:path].should == "/"
+    uri[:query_hash].should == nil
+    uri[:fragment].should == nil
+  end
+
+  it "should parse a bare domain containing dashes" do
+    uri = Normalic::URI.parse("web-stuff.com")
+    uri.should_not be_nil
+    uri[:scheme].should == "http"
+    uri[:user].should == nil
+    uri[:subdomain].should == "www"
+    uri[:domain].should == "web-stuff"
     uri[:tld].should == "com"
     uri[:port].should == nil
     uri[:path].should == "/"
