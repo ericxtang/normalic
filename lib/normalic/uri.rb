@@ -35,7 +35,7 @@ module Normalic
       user = url.cut!(/^.+@/) and user.cut!(/@$/)
       port = url.cut!(/:\d+$/) and port.cut!(/^:/)
       tld = url.cut!(/\.\w+$/) and tld.cut!(/^\./)
-      domain = url.cut!(/(\.|\A)\w+$/) and domain.cut!(/^\./)
+      domain = url.cut!(/(\.|\A)[^\.]+$/) and domain.cut!(/^\./)
       subdomain = url.empty? ? 'www' : url
 
       return nil unless tld && domain
