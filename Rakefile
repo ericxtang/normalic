@@ -2,7 +2,7 @@ require 'rubygems'
 require 'rake'
 require 'echoe'
 
-Echoe.new('normalic', '0.1.2') do |p|
+Echoe.new('normalic', '0.2') do |p|
   p.description    = "Normalize U.S addresses"
   p.url            = "http://github.com/ericxtang/normalic"
   p.author         = "Eric Tang"
