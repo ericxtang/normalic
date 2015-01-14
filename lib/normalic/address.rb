@@ -1,11 +1,12 @@
 require File.expand_path('../constants', File.dirname(__FILE__))
+require 'pry'
 
 module Normalic
   # only handles U.S. addresses
   class Address
     UNIT_TYPE_REGEX = /ap(artmen)?t|box|building|bldg|dep(artmen)?t|fl(oor)?|po( box)?|r(oo)?m|s(ui)?te|un(i)?t/
-    REGEXES = {:country => /usa/,
-               :zipcode => /\d{5}(-\d{4})?/,
+    REGEXES = {:country => /usa|ca/,
+               :zipcode => /((\d{5}(-\d{4})?)|([abceghjklmnrstvxy]{1}\d{1}[a-z]{1} ?\d{1}[a-z]{1}\d{1}))/,
                :state => Regexp.new(STATE_CODES.values * '|' + '|' +
                                     STATE_CODES.keys * '|'),
                :city => /\w+(\s\w+)*/,
@@ -205,7 +206,12 @@ module Normalic
     end
 
     def self.normalize_zipcode(zipcode)
-      zipcode ? zipcode[0,5] : nil
+      return nil unless zipcode
+      if (6..7).include? zipcode.length
+        "#{zipcode[0..2]} #{zipcode[-3..-1]}".upcase
+      else
+        zipcode[0, 5]
+      end
     end
 
     def self.normalize_state(state, zipcode=nil)

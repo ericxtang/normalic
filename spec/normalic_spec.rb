@@ -253,6 +253,30 @@ describe "Normalic::Address" do
     addr[:intersection].should == false
   end
 
+  it "should normalize a canadian address" do
+    addr = Normalic::Address.parse("800 Reynolds Dr, Kincardine, ON N2Z 3A5")
+    addr[:number].should == "800"
+    addr[:direction].should == nil
+    addr[:street].should == "Reynolds"
+    addr[:type].should == "Dr."
+    addr[:city].should == "Kincardine"
+    addr[:state].should == "ON"
+    addr[:zipcode].should == "N2Z 3A5"
+    addr[:intersection].should == false
+  end
+
+  it "should normalize a canadian address with unspaced postal code" do
+    addr = Normalic::Address.parse("800 Reynolds Dr, Kincardine, ON N2Z3A5")
+    addr[:number].should == "800"
+    addr[:direction].should == nil
+    addr[:street].should == "Reynolds"
+    addr[:type].should == "Dr."
+    addr[:city].should == "Kincardine"
+    addr[:state].should == "ON"
+    addr[:zipcode].should == "N2Z 3A5"
+    addr[:intersection].should == false
+  end
+
   it "should parse an address with no city info" do
     addr = Normalic::Address.parse("871 Washington Street")
     addr[:number].should == "871"
