@@ -1,5 +1,4 @@
 require File.expand_path('../constants', File.dirname(__FILE__))
-require 'pry'
 
 module Normalic
   # only handles U.S. addresses
@@ -20,13 +19,14 @@ module Normalic
                :street => /\w+(\s\w+)*/,
                :intersection => /(.+)\W+(and|&)\W+(.+)/}
 
-    attr_accessor :number, :direction, :street, :type, :city, :state, :zipcode, :intersection
+    attr_accessor :number, :direction, :street, :type, :unit, :city, :state, :zipcode, :intersection
 
     def initialize(fields={})
       @number = fields[:number]
       @direction = fields[:direction]
       @street = fields[:street]
       @type = fields[:type]
+      @unit = fields[:unit]
       @city = fields[:city]
       @state = fields[:state]
       @zipcode = fields[:zipcode]
@@ -49,7 +49,7 @@ module Normalic
       if (address = clean_fields.delete(:address) ||
                     clean_fields.delete(:address_line1))
         clean_fields.merge!(Hash[[:type, :street, :direction,
-                                  :number].zip(tokenize_street(address))])
+                                  :number, :unit].zip(tokenize_street(address))])
       end
       normd = normalize(clean_fields)
 
@@ -102,6 +102,8 @@ module Normalic
                           type == other.type
       return false unless !direction || !other.direction ||
                           direction == other.direction
+      return false unless !unit || !other.unit ||
+                          unit == other.unit
       true
     end
 
@@ -145,8 +147,6 @@ module Normalic
         city = city.cut!(REGEXES[:city]) if city
       end
 
-      address.detoken_rstrip!(REGEXES[:unit])
-
       if m = address.match(REGEXES[:intersection])
         intersection = true
         t1, s1, d1 = tokenize_street(m[1], false)
@@ -157,13 +157,14 @@ module Normalic
         number = nil
       else
         intersection = false
-        type, street, direction, number = tokenize_street(address)
+        type, street, direction, number, unit = tokenize_street(address)
       end
 
       {:zipcode => zipcode,
        :state => state,
        :city => city,
        :type => type,
+       :unit => unit,
        :street => street,
        :direction => direction,
        :number => number,
@@ -174,11 +175,14 @@ module Normalic
       address = address.dup
 
       number = has_number ? address.detoken_front!(REGEXES[:number]) : nil
+      unit = address.detoken!(REGEXES[:unit])
       direction = address.detoken_front!(REGEXES[:directional]) ||
                   address.detoken_rstrip!(REGEXES[:directional])
       type = address.detoken_rstrip!(REGEXES[:type])
       street = address.detoken!(REGEXES[:street])
-      if has_number
+      if unit && has_number
+        return type, street, direction, number, unit
+      elsif has_number
         return type, street, direction, number
       else
         return type, street, direction
@@ -200,6 +204,7 @@ module Normalic
         tokens[:type] = normalize_type(tokens[:type])
         tokens[:street] = normalize_street(tokens[:street])
         tokens[:direction] = normalize_direction(tokens[:direction])
+        tokens[:unit] = normalize_unit(tokens[:unit])
       end
 
       tokens
@@ -238,6 +243,10 @@ module Normalic
       else
         nil
       end
+    end
+
+    def self.normalize_unit(unit)
+      unit ? titlize(unit) : nil
     end
 
     def self.normalize_street(street)

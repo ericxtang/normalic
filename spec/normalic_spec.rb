@@ -217,6 +217,19 @@ describe "Normalic::Address" do
     addr[:intersection].should == false
   end
 
+  it "should parse a post office box" do
+    addr = Normalic::Address.parse("PO BOX 553, Asquith, SK S0K0J0")
+    addr[:unit].should == "Po Box 553"
+    addr[:number].should == nil
+    addr[:direction].should == nil
+    addr[:street].should == nil
+    addr[:type].should == nil
+    addr[:city].should == "Asquith"
+    addr[:state].should == "SK"
+    addr[:zipcode].should == "S0K 0J0"
+    addr[:intersection].should == false
+  end
+
   it "should parse an address with no state info" do
     addr = Normalic::Address.parse("416 W 13th Street, New York, 10014")
     addr[:number].should == "416"
@@ -357,6 +370,22 @@ describe "Normalic::Address" do
     addr[:city].should == "New York"
     addr[:state].should == "NY"
     addr[:zipcode].should == "10014"
+    addr[:intersection].should == false
+  end
+
+  it "should parse a post office box from a hash of fields" do
+    addr = Normalic::Address.normalize_fields(:address => "PO BOX 553",
+                                              :city => "Asquith",
+                                              :state => "SK",
+                                              :zipcode => "S0K0J0")
+    addr[:number].should == nil
+    addr[:direction].should == nil
+    addr[:street].should == nil
+    addr[:type].should == nil
+    addr[:unit].should == "Po Box 553"
+    addr[:city].should == "Asquith"
+    addr[:state].should == "SK"
+    addr[:zipcode].should == "S0K 0J0"
     addr[:intersection].should == false
   end
 
