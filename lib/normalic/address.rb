@@ -4,8 +4,8 @@ module Normalic
   # only handles U.S. addresses
   class Address
     UNIT_TYPE_REGEX = /ap(artmen)?t|box|building|bldg|dep(artmen)?t|fl(oor)?|po( box)?|r(oo)?m|s(ui)?te|un(i)?t/
-    REGEXES = {:country => /usa/,
-               :zipcode => /\d{5}(-\d{4})?/,
+    REGEXES = {:country => /usa|ca/,
+               :zipcode => /((\d{5}(-\d{4})?)|([abceghjklmnrstvxy]{1}\d{1}[a-z]{1} ?\d{1}[a-z]{1}\d{1}))/,
                :state => Regexp.new(STATE_CODES.values * '|' + '|' +
                                     STATE_CODES.keys * '|'),
                :city => /\w+(\s\w+)*/,
@@ -15,17 +15,18 @@ module Normalic
                :directional => Regexp.new(DIRECTIONAL.keys * '|' + '|' +
                                           DIRECTIONAL.values * '|'),
                :type => Regexp.new(STREET_TYPES_LIST * '|'),
-               :number => /\d+/,
+               :number => /[NWSE]?\d+/,
                :street => /\w+(\s\w+)*/,
                :intersection => /(.+)\W+(and|&)\W+(.+)/}
 
-    attr_accessor :number, :direction, :street, :type, :city, :state, :zipcode, :intersection
+    attr_accessor :number, :direction, :street, :type, :unit, :city, :state, :zipcode, :intersection
 
     def initialize(fields={})
       @number = fields[:number]
       @direction = fields[:direction]
       @street = fields[:street]
       @type = fields[:type]
+      @unit = fields[:unit]
       @city = fields[:city]
       @state = fields[:state]
       @zipcode = fields[:zipcode]
@@ -48,7 +49,7 @@ module Normalic
       if (address = clean_fields.delete(:address) ||
                     clean_fields.delete(:address_line1))
         clean_fields.merge!(Hash[[:type, :street, :direction,
-                                  :number].zip(tokenize_street(address))])
+                                  :number, :unit].zip(tokenize_street(address))])
       end
       normd = normalize(clean_fields)
 
@@ -101,6 +102,8 @@ module Normalic
                           type == other.type
       return false unless !direction || !other.direction ||
                           direction == other.direction
+      return false unless !unit || !other.unit ||
+                          unit == other.unit
       true
     end
 
@@ -144,8 +147,6 @@ module Normalic
         city = city.cut!(REGEXES[:city]) if city
       end
 
-      address.detoken_rstrip!(REGEXES[:unit])
-
       if m = address.match(REGEXES[:intersection])
         intersection = true
         t1, s1, d1 = tokenize_street(m[1], false)
@@ -156,13 +157,14 @@ module Normalic
         number = nil
       else
         intersection = false
-        type, street, direction, number = tokenize_street(address)
+        type, street, direction, number, unit = tokenize_street(address)
       end
 
       {:zipcode => zipcode,
        :state => state,
        :city => city,
        :type => type,
+       :unit => unit,
        :street => street,
        :direction => direction,
        :number => number,
@@ -173,11 +175,14 @@ module Normalic
       address = address.dup
 
       number = has_number ? address.detoken_front!(REGEXES[:number]) : nil
+      unit = address.detoken!(REGEXES[:unit])
       direction = address.detoken_front!(REGEXES[:directional]) ||
                   address.detoken_rstrip!(REGEXES[:directional])
       type = address.detoken_rstrip!(REGEXES[:type])
       street = address.detoken!(REGEXES[:street])
-      if has_number
+      if unit && has_number
+        return type, street, direction, number, unit
+      elsif has_number
         return type, street, direction, number
       else
         return type, street, direction
@@ -199,13 +204,19 @@ module Normalic
         tokens[:type] = normalize_type(tokens[:type])
         tokens[:street] = normalize_street(tokens[:street])
         tokens[:direction] = normalize_direction(tokens[:direction])
+        tokens[:unit] = normalize_unit(tokens[:unit])
       end
 
       tokens
     end
 
     def self.normalize_zipcode(zipcode)
-      zipcode ? zipcode[0,5] : nil
+      return nil unless zipcode
+      if (6..7).include? zipcode.length
+        "#{zipcode[0..2]} #{zipcode[-3..-1]}".upcase
+      else
+        zipcode[0, 5]
+      end
     end
 
     def self.normalize_state(state, zipcode=nil)
@@ -232,6 +243,10 @@ module Normalic
       else
         nil
       end
+    end
+
+    def self.normalize_unit(unit)
+      unit ? titlize(unit) : nil
     end
 
     def self.normalize_street(street)
