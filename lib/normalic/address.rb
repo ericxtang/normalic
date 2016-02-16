@@ -15,7 +15,7 @@ module Normalic
                :directional => Regexp.new(DIRECTIONAL.keys * '|' + '|' +
                                           DIRECTIONAL.values * '|'),
                :type => Regexp.new(STREET_TYPES_LIST * '|'),
-               :number => /\d+/,
+               :number => /[NWSE]?\d+/,
                :street => /\w+(\s\w+)*/,
                :intersection => /(.+)\W+(and|&)\W+(.+)/}
 
